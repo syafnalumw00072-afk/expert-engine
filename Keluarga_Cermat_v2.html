@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keluarga Cermat v2.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-100">
+<div class="max-w-md mx-auto p-4">
+  <h1 class="text-2xl font-bold mb-4">📊 Keluarga Cermat v2.0</h1>
+
+  <div class="bg-white rounded-xl p-4 mb-4 shadow">
+    <div>Saldo: <span id="saldo">Rp 0</span></div>
+    <div>Pemasukan: <span id="income">Rp 0</span></div>
+    <div>Pengeluaran: <span id="expense">Rp 0</span></div>
+  </div>
+
+  <div class="bg-white rounded-xl p-4 mb-4 shadow">
+    <input id="desc" class="border p-2 w-full mb-2" placeholder="Deskripsi">
+    <input id="amount" type="number" class="border p-2 w-full mb-2" placeholder="Jumlah">
+    <select id="type" class="border p-2 w-full mb-2">
+      <option value="income">Pemasukan</option>
+      <option value="expense">Pengeluaran</option>
+    </select>
+    <button onclick="addTx()" class="bg-blue-600 text-white px-4 py-2 rounded">Tambah</button>
+    <button onclick="exportCSV()" class="bg-green-600 text-white px-4 py-2 rounded">Export CSV</button>
+  </div>
+
+  <div class="bg-white rounded-xl p-4 mb-4 shadow">
+    <canvas id="chart"></canvas>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<script>
+let tx = JSON.parse(localStorage.getItem('kc_v2')||'[]');
+let chart;
+
+function save(){
+ localStorage.setItem('kc_v2',JSON.stringify(tx));
+}
+
+function update(){
+ let income=tx.filter(x=>x.type==='income').reduce((a,b)=>a+Number(b.amount),0);
+ let expense=tx.filter(x=>x.type==='expense').reduce((a,b)=>a+Number(b.amount),0);
+ let saldo=income-expense;
+
+ document.getElementById('income').textContent='Rp '+income.toLocaleString('id-ID');
+ document.getElementById('expense').textContent='Rp '+expense.toLocaleString('id-ID');
+ document.getElementById('saldo').textContent='Rp '+saldo.toLocaleString('id-ID');
+
+ document.getElementById('list').innerHTML=tx.map((t,i)=>`
+ <div class="bg-white p-3 rounded-xl shadow mb-2 flex justify-between">
+   <div>${t.desc}<br><small>${t.type}</small></div>
+   <div>
+     Rp ${Number(t.amount).toLocaleString('id-ID')}
+     <button onclick="delTx(${i})">❌</button>
+   </div>
+ </div>`).join('');
+
+ const ctx=document.getElementById('chart');
+ if(chart) chart.destroy();
+ chart=new Chart(ctx,{
+  type:'doughnut',
+  data:{
+   labels:['Pemasukan','Pengeluaran'],
+   datasets:[{data:[income,expense]}]
+  }
+ });
+
+ save();
+}
+
+function addTx(){
+ const desc=document.getElementById('desc').value;
+ const amount=document.getElementById('amount').value;
+ const type=document.getElementById('type').value;
+ if(!desc || !amount) return;
+ tx.unshift({desc,amount,type});
+ update();
+}
+
+function delTx(i){
+ tx.splice(i,1);
+ update();
+}
+
+function exportCSV(){
+ let csv='Deskripsi,Jumlah,Tipe\n';
+ tx.forEach(t=>csv+=`${t.desc},${t.amount},${t.type}\n`);
+ const blob=new Blob([csv],{type:'text/csv'});
+ const a=document.createElement('a');
+ a.href=URL.createObjectURL(blob);
+ a.download='keluarga-cermat.csv';
+ a.click();
+}
+
+update();
+</script>
+</body>
+</html>
